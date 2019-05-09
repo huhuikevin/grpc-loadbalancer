@@ -34,7 +34,7 @@ func StartServer(address string, extAddress string, weight int32, disable int32)
 	return server.Start(&testserver{server: server})
 }
 
-func (s *testserver) RegisterToGRPC(grpcs *grpc.Server) {
+func (s *testserver) Register(grpcs *grpc.Server) {
 	proto.RegisterTestServer(grpcs, s)
 }
 

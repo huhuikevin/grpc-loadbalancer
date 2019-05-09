@@ -12,7 +12,7 @@ import (
 
 //GRPCServer any grpc server must implemente this interface
 type GRPCServer interface {
-	RegisterToGRPC(*grpc.Server)
+	Register(*grpc.Server)
 }
 
 //Config server config
@@ -61,7 +61,7 @@ func (s *Server) Start(server GRPCServer) error {
 	}
 	s.grpcserver = grpc.NewServer()
 	s.server = server
-	s.server.RegisterToGRPC(s.grpcserver)
+	s.server.Register(s.grpcserver)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
