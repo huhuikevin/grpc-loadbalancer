@@ -8,10 +8,15 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/huhuikevin/grpc-loadbalancer/resolver"
 
 	"google.golang.org/grpc"
+)
+
+const (
+	defaultTTL = 10 * time.Second
 )
 
 //GRPCServer any grpc server must implemente this interface
@@ -28,6 +33,7 @@ type Config struct {
 	ExtAddress string
 	Weight     int32
 	Disable    int32
+	TTL        time.Duration
 }
 
 //Server 对具体的rpc server的封装
@@ -40,6 +46,9 @@ type Server struct {
 
 //New 创建一个新的grpc server
 func New(config Config) *Server {
+	if config.TTL == 0 {
+		config.TTL = defaultTTL
+	}
 	server := &Server{
 		config: config,
 	}
@@ -70,11 +79,7 @@ func (s *Server) Start(server GRPCServer) error {
 		defer wg.Done()
 		defer listener.Close()
 		defer s.grpcserver.Stop()
-
-		if err := s.grpcserver.Serve(listener); err != nil {
-			return
-		}
-		return
+		s.grpcserver.Serve(listener)
 	}()
 
 	register, err := resolver.NewRegister(s.config.Resolver, s.config.Domain, resolver.Option{
@@ -82,7 +87,7 @@ func (s *Server) Start(server GRPCServer) error {
 			Addr:     s.config.ExtAddress,
 			MetaData: resolver.BalanceData{Weight: s.config.Weight, Disable: s.config.Disable},
 		},
-		TTL: 9,
+		TTL: s.config.TTL,
 	})
 	if err != nil {
 		return err
