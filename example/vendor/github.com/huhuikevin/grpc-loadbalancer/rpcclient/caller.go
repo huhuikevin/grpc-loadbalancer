@@ -28,7 +28,7 @@ type Caller struct {
 	Domain     string
 	Balance    string
 	Client     interface{}
-	Method     map[string]reflect.Value
+	Method     map[string]reflect.Method
 	workQueue  *workqueue.WorkQueue
 	grpcClient *grpc.ClientConn
 }
@@ -39,7 +39,7 @@ func NewCaller(resolver string, domain string, balance string, queueSize int32) 
 		Resolver:  resolver,
 		Domain:    domain,
 		Balance:   balance,
-		Method:    make(map[string]reflect.Value),
+		Method:    make(map[string]reflect.Method),
 		workQueue: workqueue.NewWorkQueue(queueSize),
 	}
 	return caller
@@ -69,7 +69,7 @@ func (c *Caller) Start(gclient GRPCClient) error {
 	ctype := reflect.TypeOf(c.Client)
 	for i := 0; i < ctype.NumMethod(); i++ {
 		m := ctype.Method(i)
-		c.Method[m.Name] = m.Func
+		c.Method[m.Name] = m
 		fmt.Printf("%s: %v: %v\n", m.Name, m.Type, m.Func)
 	}
 	// for _, name := range methodName {
@@ -89,26 +89,29 @@ func (c *Caller) Start(gclient GRPCClient) error {
 //InvokeWithArgs2 调用Client中对应名称为mName的方法，其实就是封装了grpc的方法
 //返回2个值，一个interface， 一个error
 func (c *Caller) InvokeWithArgs2(mName string, params []interface{}, timeout time.Duration) (interface{}, error) {
-	value, ok := c.Method[mName]
+	method, ok := c.Method[mName]
 	if !ok {
 		return nil, ErrCanNotFoundFunc
 	}
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(timeout))
 	defer cancel()
 	args := make([]reflect.Value, 0, len(params))
+	//the first argument is the receiver of the function
 	args = append(args, reflect.ValueOf(c.Client), reflect.ValueOf(ctx))
 	for _, v := range params {
 		args = append(args, reflect.ValueOf(v))
 	}
-	return c.callFuncOnWorkqueue(value, args) //value.Call(args)
+	return c.callFuncOnWorkqueue(method, args) //value.Call(args)
 }
 
-func (c *Caller) callFuncOnWorkqueue(f reflect.Value, args []reflect.Value) (interface{}, error) {
+func (c *Caller) callFuncOnWorkqueue(f reflect.Method, args []reflect.Value) (interface{}, error) {
 	task := &callTask{
 		function: f,
 		args:     args,
 	}
-	c.workQueue.ExecuteTask(task)
+	if err := c.workQueue.ExecuteTask(task); err != nil {
+		return nil, err
+	}
 	return task.result, task.err
 }
 
@@ -118,14 +121,19 @@ func (c *Caller) getFunctionByName(name string) reflect.Value {
 }
 
 type callTask struct {
-	function reflect.Value
+	function reflect.Method
 	args     []reflect.Value
 	result   interface{}
 	err      error
 }
 
 func (c *callTask) Call() {
-	rvalue := c.function.Call(c.args)
+	rvalue := []reflect.Value(nil)
+	if c.function.Type.IsVariadic() {
+		rvalue = c.function.Func.CallSlice(c.args)
+	} else {
+		rvalue = c.function.Func.Call(c.args)
+	}
 	if len(rvalue) != 2 {
 		c.err = ErrReturnValueNotValid
 		return

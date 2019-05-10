@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -37,7 +38,7 @@ func (t *TestClientWrapper) NewClient(conn *grpc.ClientConn) interface{} {
 //Start 开始
 func (t *TestClientWrapper) Start() error {
 	caller := rpcclient.NewCaller(resovler, serverDomain, blancePolicy.String(), 1000)
-	err := caller.Start(t, []string{"Say"})
+	err := caller.Start(t)
 	if err != nil {
 		return err
 	}
@@ -50,7 +51,7 @@ func (t *TestClientWrapper) Start() error {
 //Say call Say function of testClient
 func (t *TestClientWrapper) Say(in *proto.SayReq, timeout time.Duration) (*proto.SayResp, error) {
 	in.Content = blancePolicy.String()
-	v, err := t.caller.InvokeWithArgs2("Say", []interface{}{in}, timeout)
+	v, err := t.caller.InvokeWithArgs2("Say", []interface{}{in, []grpc.CallOption{}}, timeout)
 	if err != nil {
 		logtest.Error(logs.Error(err))
 		return nil, err
@@ -58,6 +59,7 @@ func (t *TestClientWrapper) Say(in *proto.SayReq, timeout time.Duration) (*proto
 
 	resp, ok := v.(*proto.SayResp)
 	if !ok {
+		fmt.Printf("resp : %v\r\n", resp)
 		return nil, rpcclient.ErrReturnValueCanNotConvertToStruct
 	}
 	t.mu.Lock()
