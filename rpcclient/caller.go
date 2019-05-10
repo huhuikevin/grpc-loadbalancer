@@ -89,18 +89,19 @@ func (c *Caller) Start(gclient GRPCClient) error {
 //InvokeWithArgs2 调用Client中对应名称为mName的方法，其实就是封装了grpc的方法
 //返回2个值，一个interface， 一个error
 func (c *Caller) InvokeWithArgs2(mName string, params []interface{}, timeout time.Duration) (interface{}, error) {
-	value, ok := c.Method[mName]
+	method, ok := c.Method[mName]
 	if !ok {
 		return nil, ErrCanNotFoundFunc
 	}
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(timeout))
 	defer cancel()
 	args := make([]reflect.Value, 0, len(params))
+	//the first args is the receiver of the function
 	args = append(args, reflect.ValueOf(c.Client), reflect.ValueOf(ctx))
 	for _, v := range params {
 		args = append(args, reflect.ValueOf(v))
 	}
-	return c.callFuncOnWorkqueue(value, args) //value.Call(args)
+	return c.callFuncOnWorkqueue(method, args) //value.Call(args)
 }
 
 func (c *Caller) callFuncOnWorkqueue(f reflect.Value, args []reflect.Value) (interface{}, error) {
