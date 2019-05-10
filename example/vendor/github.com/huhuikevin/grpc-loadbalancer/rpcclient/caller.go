@@ -31,9 +31,6 @@ type Caller struct {
 	grpcClient *grpc.ClientConn
 }
 
-//NewClientFunc create rpc client
-type NewClientFunc func(cc *grpc.ClientConn) interface{}
-
 //NewCaller 返回一个client 的call对象
 func NewCaller(resolver string, domain string, balance string, queueSize int32) *Caller {
 	caller := &Caller{
@@ -57,7 +54,7 @@ func (c *Caller) Stop() {
 }
 
 //Start get grpc client connection
-func (c *Caller) Start(f NewClientFunc, methodName []string) error {
+func (c *Caller) Start(gclient GRPCClient, methodName []string) error {
 	//target is for the naming finder,example etcd:///test.example.com
 	//the grpc will use the naming server of "etcd" for name resolver
 	target := c.Resolver + ":///" + c.Domain
@@ -66,7 +63,7 @@ func (c *Caller) Start(f NewClientFunc, methodName []string) error {
 		return err
 	}
 	c.grpcClient = client
-	c.Client = f(client)
+	c.Client = gclient.NewClient(client)
 	for _, name := range methodName {
 		_, ok := c.Method[name]
 		if !ok {

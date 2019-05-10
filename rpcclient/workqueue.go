@@ -1,14 +1,23 @@
 package rpcclient
 
+//goroutine pool manager, 一般情况下一个grpc client会启动一个goroutine pool
+//所有的这个grpc client的调用都通过这个pool来完成
+//example:
+//创建一个最大能有1000个gorouting的pool
+//最多可以运行1000个gorouting，同时还可以有最大1000个task可以等待前面的任务完成
+//queue := newWorkQueue(1000)
+//
+//for i := 0; i < 10000; i++{
+//	go queue.executeTask(func, args)
+//}
+//上面的例子，应该有很多返回ErrTooManyPendingWorks的错误
+//pool 是否需要做弹性伸缩，如果有一段时间pool的idle work超过一定的数目，是否需要销毁？？？
+//goroutine的资源占用很少，所以可以不考虑???
+
 import (
 	"errors"
 	"reflect"
 	"sync"
-	"time"
-)
-
-const (
-	maxTimeWaitForWorkQueue = 10 * time.Second
 )
 
 var (
@@ -33,12 +42,16 @@ type worker struct {
 }
 
 type workQueue struct {
-	queueSize    int32
-	workingSize  int32
+	//最多能有多少个goroutine
+	queueSize int32
+	//目前启动了多少个gorougine
+	workingSize int32
+	//目前有多少个task在等待执行
 	pendingTasks int32
-	idleWorker   chan *worker
-	mu           sync.Mutex
-	stoped       bool
+	//空闲的goroutine 队列，通过channel实现
+	idleWorker chan *worker
+	mu         sync.Mutex
+	stoped     bool
 }
 
 func newWorkQueue(size int32) *workQueue {
@@ -102,6 +115,7 @@ func (wq *workQueue) stop() {
 	wq.stoped = true
 	wq.mu.Unlock()
 	//下面通过idleWorker保证了worker不可能在其他地方使用，不需要加锁
+	//这个地方会等待所有的woker都空闲，会block
 	for i := int32(0); i < wq.workingSize; i++ {
 		worker := <-wq.idleWorker
 		worker.quit <- 1
@@ -130,7 +144,9 @@ func (wq *workQueue) executeTask(f reflect.Value, args []reflect.Value) []reflec
 }
 
 func (w *worker) execute(t *task) []reflect.Value {
+	//put the task to the worker's queue
 	w.taskQueue <- t
+	//wait for the task result
 	v := <-t.result
 	return v
 }

@@ -28,14 +28,16 @@ type TestClientWrapper struct {
 	mu     sync.Mutex
 }
 
-func newClient(conn *grpc.ClientConn) interface{} {
+//NewClient 创建一个真实的rpc client，必须要实现GRPCClient 的NewClient接口
+//用户不需要调用
+func (t *TestClientWrapper) NewClient(conn *grpc.ClientConn) interface{} {
 	return proto.NewTestClient(conn)
 }
 
 //Start 开始
 func (t *TestClientWrapper) Start() error {
 	caller := rpcclient.NewCaller(resovler, serverDomain, blancePolicy.String(), 1000)
-	err := caller.Start(newClient, []string{"Say"})
+	err := caller.Start(t, []string{"Say"})
 	if err != nil {
 		return err
 	}

@@ -11,6 +11,7 @@ import (
 )
 
 //GRPCServer any grpc server must implemente this interface
+//提供grpc的server必须要实现这个接口
 type GRPCServer interface {
 	Register(*grpc.Server)
 }
@@ -24,9 +25,6 @@ type Config struct {
 	Weight     int32
 	Disable    int32
 }
-
-//NewServerFunc create rpc server
-type NewServerFunc func(*grpc.Server) interface{}
 
 //Server 对具体的rpc server的封装
 type Server struct {
