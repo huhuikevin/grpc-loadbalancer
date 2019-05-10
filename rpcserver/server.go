@@ -1,9 +1,13 @@
 package rpcserver
 
 import (
+	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 
 	"github.com/huhuikevin/grpc-loadbalancer/resolver"
 
@@ -90,7 +94,7 @@ func (s *Server) Start(server GRPCServer) error {
 		defer s.register.Deregister()
 		s.register.Register()
 	}()
-
+	s.captureSignal()
 	wg.Wait()
 
 	return nil
@@ -100,4 +104,17 @@ func (s *Server) Start(server GRPCServer) error {
 func (s *Server) Stop() {
 	s.register.Deregister()
 	s.grpcserver.GracefulStop()
+}
+
+func (s *Server) captureSignal() {
+	sigChan := make(chan os.Signal, 10)
+	signal.Notify(sigChan, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
+
+	for sig := range sigChan {
+		if sig == syscall.SIGQUIT || sig == syscall.SIGINT || sig == syscall.SIGTERM {
+			fmt.Printf("capture signal: %v\r\n", sig)
+			s.Stop()
+			os.Exit(1)
+		}
+	}
 }
