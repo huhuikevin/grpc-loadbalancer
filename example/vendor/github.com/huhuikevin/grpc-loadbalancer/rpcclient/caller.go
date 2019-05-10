@@ -3,9 +3,11 @@ package rpcclient
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
+	"github.com/huhuikevin/grpc-loadbalancer/workqueue"
 	"google.golang.org/grpc"
 )
 
@@ -27,7 +29,7 @@ type Caller struct {
 	Balance    string
 	Client     interface{}
 	Method     map[string]reflect.Value
-	workQueue  *workQueue
+	workQueue  *workqueue.WorkQueue
 	grpcClient *grpc.ClientConn
 }
 
@@ -38,7 +40,7 @@ func NewCaller(resolver string, domain string, balance string, queueSize int32) 
 		Domain:    domain,
 		Balance:   balance,
 		Method:    make(map[string]reflect.Value),
-		workQueue: newWorkQueue(queueSize),
+		workQueue: workqueue.NewWorkQueue(queueSize),
 	}
 	return caller
 }
@@ -46,7 +48,7 @@ func NewCaller(resolver string, domain string, balance string, queueSize int32) 
 //Stop stop the rpc caller
 func (c *Caller) Stop() {
 	if c.workQueue != nil {
-		c.workQueue.stop()
+		c.workQueue.Stop()
 	}
 	if c.grpcClient != nil {
 		c.grpcClient.Close()
@@ -54,7 +56,7 @@ func (c *Caller) Stop() {
 }
 
 //Start get grpc client connection
-func (c *Caller) Start(gclient GRPCClient, methodName []string) error {
+func (c *Caller) Start(gclient GRPCClient) error {
 	//target is for the naming finder,example etcd:///test.example.com
 	//the grpc will use the naming server of "etcd" for name resolver
 	target := c.Resolver + ":///" + c.Domain
@@ -64,17 +66,23 @@ func (c *Caller) Start(gclient GRPCClient, methodName []string) error {
 	}
 	c.grpcClient = client
 	c.Client = gclient.NewClient(client)
-	for _, name := range methodName {
-		_, ok := c.Method[name]
-		if !ok {
-			value := c.getFunctionByName(name)
-			if !value.IsValid() {
-				client.Close()
-				return ErrCanNotFoundFunc
-			}
-			c.Method[name] = value
-		}
+	ctype := reflect.TypeOf(c.Client)
+	for i := 0; i < ctype.NumMethod(); i++ {
+		m := ctype.Method(i)
+		c.Method[m.Name] = m.Func
+		fmt.Printf("%s: %v: %v\n", m.Name, m.Type, m.Func)
 	}
+	// for _, name := range methodName {
+	// 	_, ok := c.Method[name]
+	// 	if !ok {
+	// 		value := c.getFunctionByName(name)
+	// 		if !value.IsValid() {
+	// 			client.Close()
+	// 			return ErrCanNotFoundFunc
+	// 		}
+	// 		c.Method[name] = value
+	// 	}
+	// }
 	return nil
 }
 
@@ -88,32 +96,49 @@ func (c *Caller) InvokeWithArgs2(mName string, params []interface{}, timeout tim
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(timeout))
 	defer cancel()
 	args := make([]reflect.Value, 0, len(params))
-	args = append(args, reflect.ValueOf(ctx))
+	args = append(args, reflect.ValueOf(c.Client), reflect.ValueOf(ctx))
 	for _, v := range params {
 		args = append(args, reflect.ValueOf(v))
 	}
-	rvalue := c.callFuncOnWorkqueue(value, args) //value.Call(args)
-
-	if len(rvalue) != 2 {
-		return nil, ErrReturnValueNotValid
-	}
-	if !rvalue[1].IsNil() && rvalue[1].IsValid() {
-		r1 := rvalue[1].Interface()
-		err, ok := r1.(error)
-		if !ok {
-			return nil, ErrReturnErrorNotValid
-		}
-		return nil, err
-	}
-	r0 := rvalue[0].Interface()
-	return r0, nil
+	return c.callFuncOnWorkqueue(value, args) //value.Call(args)
 }
 
-func (c *Caller) callFuncOnWorkqueue(f reflect.Value, args []reflect.Value) []reflect.Value {
-	return c.workQueue.executeTask(f, args)
+func (c *Caller) callFuncOnWorkqueue(f reflect.Value, args []reflect.Value) (interface{}, error) {
+	task := &callTask{
+		function: f,
+		args:     args,
+	}
+	c.workQueue.ExecuteTask(task)
+	return task.result, task.err
 }
 
 func (c *Caller) getFunctionByName(name string) reflect.Value {
 	value := reflect.ValueOf(c.Client)
 	return value.MethodByName(name)
+}
+
+type callTask struct {
+	function reflect.Value
+	args     []reflect.Value
+	result   interface{}
+	err      error
+}
+
+func (c *callTask) Call() {
+	rvalue := c.function.Call(c.args)
+	if len(rvalue) != 2 {
+		c.err = ErrReturnValueNotValid
+		return
+	}
+	if !rvalue[1].IsNil() && rvalue[1].IsValid() {
+		r1 := rvalue[1].Interface()
+		err, ok := r1.(error)
+		if !ok {
+			c.err = ErrReturnErrorNotValid
+			return
+		}
+		c.err = err
+		return
+	}
+	c.result = rvalue[0].Interface()
 }

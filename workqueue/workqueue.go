@@ -1,4 +1,4 @@
-package rpcclient
+package workqueue
 
 //goroutine pool manager, 一般情况下一个grpc client会启动一个goroutine pool
 //所有的这个grpc client的调用都通过这个pool来完成
@@ -16,9 +16,13 @@ package rpcclient
 
 import (
 	"errors"
-	"reflect"
 	"sync"
 )
+
+//Task called by queue, and brand by user task
+type Task interface {
+	Call()
+}
 
 var (
 	//ErrWorkQueueFull 工作队列满
@@ -31,17 +35,14 @@ var (
 	ErrWaitTimeOut = errors.New("Wait for an idle worker timeout")
 )
 
-type task struct {
-	f      reflect.Value
-	args   []reflect.Value
-	result chan []reflect.Value
-}
 type worker struct {
-	taskQueue chan *task
+	taskQueue chan Task
 	quit      chan int
+	done      chan int
 }
 
-type workQueue struct {
+//WorkQueue pool
+type WorkQueue struct {
 	//最多能有多少个goroutine
 	queueSize int32
 	//目前启动了多少个gorougine
@@ -54,8 +55,9 @@ type workQueue struct {
 	stoped     bool
 }
 
-func newWorkQueue(size int32) *workQueue {
-	queue := &workQueue{
+//NewWorkQueue create a queue with pool size
+func NewWorkQueue(size int32) *WorkQueue {
+	queue := &WorkQueue{
 		queueSize:  size,
 		idleWorker: make(chan *worker, size),
 		mu:         sync.Mutex{},
@@ -65,7 +67,7 @@ func newWorkQueue(size int32) *workQueue {
 
 //getIdleWorker 获取一个空闲的工作者，如果idleWorker中没有，而且目前的工作者数量小于queueSize
 //创建一个新的，否则跳到等待他人释放工作者，如果等待的人数太多，返回错误
-func (wq *workQueue) getIdleWorker() (*worker, error) {
+func (wq *WorkQueue) getIdleWorker() (*worker, error) {
 	select {
 	case w := <-wq.idleWorker:
 		if w == nil {
@@ -84,8 +86,9 @@ func (wq *workQueue) getIdleWorker() (*worker, error) {
 		wq.workingSize++
 		wq.mu.Unlock()
 		w := &worker{
-			taskQueue: make(chan *task),
+			taskQueue: make(chan Task),
 			quit:      make(chan int),
+			done:      make(chan int),
 		}
 
 		w.start()
@@ -105,8 +108,8 @@ wait:
 	return w, nil
 }
 
-//stop 从idleWorker中获取所有的工作者，发送quit信息
-func (wq *workQueue) stop() {
+//Stop 从idleWorker中获取所有的工作者，发送quit信息
+func (wq *WorkQueue) Stop() {
 	wq.mu.Lock()
 	if wq.stoped {
 		wq.mu.Unlock()
@@ -125,30 +128,26 @@ func (wq *workQueue) stop() {
 	close(wq.idleWorker)
 }
 
-func (wq *workQueue) putIdleWorker(worker *worker) {
+func (wq *WorkQueue) putIdleWorker(worker *worker) {
 	wq.idleWorker <- worker
 }
 
-func (wq *workQueue) executeTask(f reflect.Value, args []reflect.Value) []reflect.Value {
+//ExecuteTask 执行task
+func (wq *WorkQueue) ExecuteTask(task Task) error {
 	worker, err := wq.getIdleWorker()
 	if err != nil {
-		return []reflect.Value{reflect.Value{}, reflect.ValueOf(err)}
+		return err
 	}
 	defer wq.putIdleWorker(worker)
-	task := &task{
-		f:      f,
-		args:   args,
-		result: make(chan []reflect.Value),
-	}
 	return worker.execute(task)
 }
 
-func (w *worker) execute(t *task) []reflect.Value {
+func (w *worker) execute(task Task) error {
 	//put the task to the worker's queue
-	w.taskQueue <- t
-	//wait for the task result
-	v := <-t.result
-	return v
+	w.taskQueue <- task
+	//wait for the task done
+	<-w.done
+	return nil
 }
 
 func (w *worker) start() {
@@ -159,8 +158,8 @@ func (w *worker) start() {
 				if task == nil {
 					return
 				}
-				v := task.f.Call(task.args)
-				task.result <- v
+				task.Call()
+				w.done <- 1
 			case <-w.quit:
 				return
 			}

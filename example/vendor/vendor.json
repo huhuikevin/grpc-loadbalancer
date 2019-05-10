@@ -86,44 +86,50 @@
 		{
 			"checksumSHA1": "KnPnO3sOFJgt1yiaptt4DW8dB6s=",
 			"path": "github.com/huhuikevin/grpc-loadbalancer/balancer",
-			"revision": "be1b18e12edf51cac32bbc0bad9fb7306765faf0",
-			"revisionTime": "2019-05-09T12:04:36Z"
+			"revision": "c34814da3c858c3454c150613e4e9ce2ed920d70",
+			"revisionTime": "2019-05-10T03:50:40Z"
 		},
 		{
 			"checksumSHA1": "YeCDJpguO6qea15TGEHlS2DgbGM=",
 			"path": "github.com/huhuikevin/grpc-loadbalancer/balancer/picker",
-			"revision": "be1b18e12edf51cac32bbc0bad9fb7306765faf0",
-			"revisionTime": "2019-05-09T12:04:36Z"
+			"revision": "c34814da3c858c3454c150613e4e9ce2ed920d70",
+			"revisionTime": "2019-05-10T03:50:40Z"
 		},
 		{
 			"checksumSHA1": "ChhsLblWND2TJ56u8GWb7GsQ8BQ=",
 			"path": "github.com/huhuikevin/grpc-loadbalancer/logs",
-			"revision": "be1b18e12edf51cac32bbc0bad9fb7306765faf0",
-			"revisionTime": "2019-05-09T12:04:36Z"
+			"revision": "c34814da3c858c3454c150613e4e9ce2ed920d70",
+			"revisionTime": "2019-05-10T03:50:40Z"
 		},
 		{
 			"checksumSHA1": "A76uXlgrHesQb5E18oYYL38kUao=",
 			"path": "github.com/huhuikevin/grpc-loadbalancer/resolver",
-			"revision": "be1b18e12edf51cac32bbc0bad9fb7306765faf0",
-			"revisionTime": "2019-05-09T12:04:36Z"
+			"revision": "c34814da3c858c3454c150613e4e9ce2ed920d70",
+			"revisionTime": "2019-05-10T03:50:40Z"
 		},
 		{
 			"checksumSHA1": "hMXCx+G1Ew/F1dT6oXemD2bNUQ4=",
 			"path": "github.com/huhuikevin/grpc-loadbalancer/resolver/etcd",
-			"revision": "be1b18e12edf51cac32bbc0bad9fb7306765faf0",
-			"revisionTime": "2019-05-09T12:04:36Z"
+			"revision": "c34814da3c858c3454c150613e4e9ce2ed920d70",
+			"revisionTime": "2019-05-10T03:50:40Z"
 		},
 		{
-			"checksumSHA1": "Tx3pCh8WHGnicEfc9c2vPOBzujk=",
+			"checksumSHA1": "ohCevaxNd0s9GXqxfEsXohaKGNU=",
 			"path": "github.com/huhuikevin/grpc-loadbalancer/rpcclient",
-			"revision": "be1b18e12edf51cac32bbc0bad9fb7306765faf0",
-			"revisionTime": "2019-05-09T12:04:36Z"
+			"revision": "c34814da3c858c3454c150613e4e9ce2ed920d70",
+			"revisionTime": "2019-05-10T03:50:40Z"
 		},
 		{
 			"checksumSHA1": "67MlMwUt3KCcTtFVlPIFGrVtnLQ=",
 			"path": "github.com/huhuikevin/grpc-loadbalancer/rpcserver",
-			"revision": "be1b18e12edf51cac32bbc0bad9fb7306765faf0",
-			"revisionTime": "2019-05-09T12:04:36Z"
+			"revision": "c34814da3c858c3454c150613e4e9ce2ed920d70",
+			"revisionTime": "2019-05-10T03:50:40Z"
+		},
+		{
+			"checksumSHA1": "yVk4KoJWP6QFPbDAGz760sWQqSc=",
+			"path": "github.com/huhuikevin/grpc-loadbalancer/workqueue",
+			"revision": "c34814da3c858c3454c150613e4e9ce2ed920d70",
+			"revisionTime": "2019-05-10T03:50:40Z"
 		},
 		{
 			"checksumSHA1": "Tutue3nEgM/87jitUcYv6ODwyNE=",
