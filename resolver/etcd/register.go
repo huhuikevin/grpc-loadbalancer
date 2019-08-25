@@ -45,14 +45,11 @@ func NewRegistry(endpoints []string, ServiceName string, option resolver.Option)
 	if err != nil {
 		return nil, err
 	}
-	u1, err := uuid.NewV4()
-	if err != nil {
-		u1, err = uuid.NewV1()
-		if err != nil {
-			return nil, err
-		}
-	}
+	u1 := uuid.NewV4()
 	uuid := u1.String()
+	if option.NodeID != "" {
+		uuid = option.NodeID
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	registry := &registry{
 		etcd3Client: client,

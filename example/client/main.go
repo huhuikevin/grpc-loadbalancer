@@ -1,23 +1,23 @@
 package main
 
 import (
+	"context"
 	"sync"
 	"time"
 
-	"github.com/huhuikevin/grpc-loadbalancer/example/proto"
 	"github.com/huhuikevin/grpc-loadbalancer/logs"
 	"github.com/huhuikevin/grpc-loadbalancer/resolver"
-	_ "github.com/huhuikevin/grpc-loadbalancer/resolver/etcd"
+	_ "github.com/huhuikevin/grpc-loadbalancer/resolver/zookeeper"
 )
 
 var logtest = &logs.SimpleLog{Level: logs.DebugLvl}
 
 func init() {
-	resolver.AddNameServers(resovler, []string{"http://localhost:2379"})
+	resolver.AddNameServers(resovler, []string{"192.168.3.45:32350"})
 }
 
 func main() {
-	test := &TestClientWrapper{}
+	test := NewClientTest(context.Background())
 	err := test.Start()
 	if err != nil {
 		logtest.Error(logs.Error(err))
@@ -28,17 +28,17 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			resp, err1 := test.Say(&proto.SayReq{Content: "round robin"}, 5*time.Second)
+			resp, err1 := test.Say("round robin", 5*time.Second)
 			if err1 != nil {
 				logtest.Error(logs.Error(err1))
 				time.Sleep(time.Second)
 				return
 			}
-			logtest.Info(logs.String("Recved", resp.Content))
+			logtest.Info(logs.String("Recved", resp))
 		}()
 	}
 	wg.Wait()
-	test.Print()
+	//test.Print()
 }
 
 // func main() {

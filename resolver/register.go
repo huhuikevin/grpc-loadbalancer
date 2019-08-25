@@ -48,7 +48,7 @@ var register = make(map[string]RegisterFunc)
 
 //NewRegister 获取一个注册类型，通过它可以注册或者注销我们的服务
 func NewRegister(name string, server string, opts Option) (Register, error) {
-	if name != ResolverETCD3 {
+	if name != ResolverETCD3 && name != ResolverZookeeper {
 		return nil, fmt.Errorf("NewRegister: name %s is not supported", name)
 	}
 	endpoints := GetNameServers(name)

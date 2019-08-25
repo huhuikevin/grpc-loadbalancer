@@ -1,13 +1,10 @@
 package rpcserver
 
 import (
-	"fmt"
+	"context"
 	"log"
 	"net"
-	"os"
-	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/huhuikevin/grpc-loadbalancer/resolver"
@@ -19,11 +16,6 @@ const (
 	defaultTTL = 10 * time.Second
 )
 
-//GRPCServer any grpc server must implemente this interface
-//提供grpc的server必须要实现这个接口
-type GRPCServer interface {
-	Register(*grpc.Server)
-}
 
 //Config server config
 type Config struct {
@@ -38,7 +30,7 @@ type Config struct {
 
 //Server 对具体的rpc server的封装
 type Server struct {
-	server     GRPCServer
+	//server     GRPCServer
 	grpcserver *grpc.Server
 	register   resolver.Register
 	config     Config
@@ -51,6 +43,7 @@ func New(config Config) *Server {
 	}
 	server := &Server{
 		config: config,
+		grpcserver: grpc.NewServer(),
 	}
 	return server
 }
@@ -63,25 +56,27 @@ func (s *Server) NodeID() string {
 	return s.register.NodeID()
 }
 
+func (s *Server)GetgRpcServer() *grpc.Server {
+	return s.grpcserver
+}
+
 //Start gprc server
-func (s *Server) Start(server GRPCServer) error {
+func (s *Server) Start(ctx context.Context) error {
 	listener, err := net.Listen("tcp", s.config.Address)
 	if err != nil {
 		log.Printf("failed to listen: %v", err)
 		return err
 	}
-	s.grpcserver = grpc.NewServer()
-	s.server = server
-	s.server.Register(s.grpcserver)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		defer listener.Close()
 		defer s.grpcserver.Stop()
+		wg.Done()
+		log.Println("start grpc server")
 		s.grpcserver.Serve(listener)
 	}()
-
+	wg.Wait()
 	register, err := resolver.NewRegister(s.config.Resolver, s.config.Domain, resolver.Option{
 		NData: resolver.NodeData{
 			Addr:     s.config.ExtAddress,
@@ -90,18 +85,17 @@ func (s *Server) Start(server GRPCServer) error {
 		TTL: s.config.TTL,
 	})
 	if err != nil {
+		log.Println("regist error=", err)
 		return err
 	}
 	s.register = register
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer s.register.Deregister()
-		s.register.Register()
-	}()
-	s.captureSignal()
-	wg.Wait()
 
+	s.register.Register()
+
+	//go func() {
+	<- ctx.Done()
+	s.Stop()
+	//}()
 	return nil
 }
 
@@ -111,15 +105,3 @@ func (s *Server) Stop() {
 	s.grpcserver.GracefulStop()
 }
 
-func (s *Server) captureSignal() {
-	sigChan := make(chan os.Signal, 10)
-	signal.Notify(sigChan, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
-
-	for sig := range sigChan {
-		if sig == syscall.SIGQUIT || sig == syscall.SIGINT || sig == syscall.SIGTERM {
-			fmt.Printf("capture signal: %v\r\n", sig)
-			s.Stop()
-			os.Exit(1)
-		}
-	}
-}

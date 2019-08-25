@@ -276,6 +276,7 @@ func (bb *baseBalancer) Close() {
 }
 
 func init() {
+	log.Debug("init add rr && wrr")
 	RegisterBuilder(picker.RoundrobinBalanced)
 	RegisterBuilder(picker.WeightedRoundrobinBalanced)
 }

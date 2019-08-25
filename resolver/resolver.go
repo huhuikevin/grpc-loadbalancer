@@ -19,6 +19,7 @@ type resolverBuilder struct {
 }
 
 func (*resolverBuilder) Build(target grpcresolver.Target, cc grpcresolver.ClientConn, opts grpcresolver.BuildOption) (grpcresolver.Resolver, error) {
+	log.Debug("build resolver", target.Scheme)
 	if !NameServerIsValide(target.Scheme) {
 		return nil, fmt.Errorf("scheme:%s is not support", target.Scheme)
 	}
@@ -30,6 +31,7 @@ func (*resolverBuilder) Build(target grpcresolver.Target, cc grpcresolver.Client
 	}
 	watcher, err := NewWatcher(target.Scheme, target.Endpoint, endpoints)
 	if err != nil {
+		log.Error("get watch:", err)
 		return nil, err
 	}
 	r := &GRPCResolver{
@@ -96,5 +98,7 @@ func (r *GRPCResolver) Close() {
 
 func init() {
 	//注册ETCD3的域名解析系统到grpc，目前只实现了etcd3，后期可以实现consul，zk等
+	log.Debug("init register resolver")
 	grpcresolver.Register(&resolverBuilder{ResolverETCD3})
+	grpcresolver.Register(&resolverBuilder{ResolverZookeeper})
 }

@@ -33,7 +33,7 @@ func (r ResolvedData) Equls(d ResolvedData) bool {
 type Watcher interface {
 	//Close 函数用来关闭观察者
 	Close()
-	Start(dataChan chan []ResolvedData)
+	Start(dataChan chan []ResolvedData) error
 }
 
 //WatcherFunc watch function
@@ -47,7 +47,7 @@ var watcher = make(map[string]WatcherFunc)
 //service: 需要监测的key
 //endpoints: 用于域名解析的服务器地址列表
 func NewWatcher(name string, service string, endpoints []string) (Watcher, error) {
-	if name == ResolverETCD3 {
+	if name == ResolverETCD3 || name == ResolverZookeeper{
 		fun, ok := watcher[name]
 		if !ok {
 			return nil, errors.New("can not get Watcher func")

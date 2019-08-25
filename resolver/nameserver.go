@@ -10,14 +10,15 @@ const (
 	ResolverConsul = "consul"
 
 	//ResolverZookeeper 利用zoopeeker做域名解析
-	ResolverZookeeper = "zoopeeker"
+	ResolverZookeeper = "zookeeper"
+	ZkDir = "/grpc-naming"
 )
 
 var resolverServers = make(map[string][]string)
 
 //AddNameServers 设置域名解析服务器地址
 func AddNameServers(name string, servers []string) {
-	if name != ResolverETCD3 {
+	if name != ResolverETCD3 && name != ResolverZookeeper{
 		log.Error("server", name, "is Not support!!")
 		return
 	}
@@ -26,7 +27,7 @@ func AddNameServers(name string, servers []string) {
 
 //GetNameServers 获取域名解析服务器地址
 func GetNameServers(name string) []string {
-	if name != ResolverETCD3 {
+	if name != ResolverETCD3 && name != ResolverZookeeper{
 		log.Error("server", name, "is Not support!!")
 		return nil
 	}
@@ -35,7 +36,7 @@ func GetNameServers(name string) []string {
 
 //NameServerIsValide 给定的name是否支持
 func NameServerIsValide(name string) bool {
-	if name != ResolverETCD3 {
+	if name != ResolverETCD3 && name != ResolverZookeeper{
 		log.Error("server", name, "is Not support!!")
 		return false
 	}

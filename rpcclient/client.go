@@ -1,9 +1,18 @@
 package rpcclient
 
-import "google.golang.org/grpc"
+import (
+	"google.golang.org/grpc"
+	"log"
+)
 
-//GRPCClient the rpc client must implement this interface
-//在创建caller的时候回自动调用，返回一个真实的rpc client
-type GRPCClient interface {
-	NewClient(*grpc.ClientConn) interface{}
+func NewGRPCConnction(resolver string, domain string, balance string) (*grpc.ClientConn, error) {
+	//target is for the naming finder,example etcd:///test.example.com
+	//the grpc will use the naming server of "etcd" for name resolver
+	target := resolver + ":///" + domain
+	log.Print("target=", target)
+	client, err := grpc.Dial(target, grpc.WithInsecure(), grpc.WithBalancerName(balance))
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }

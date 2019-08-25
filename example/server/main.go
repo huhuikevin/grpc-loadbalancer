@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/huhuikevin/grpc-loadbalancer/resolver"
-	_ "github.com/huhuikevin/grpc-loadbalancer/resolver/etcd"
+	_ "github.com/huhuikevin/grpc-loadbalancer/resolver/zookeeper"
 )
 
 var port = flag.Int("port", 4000, "listening port")
@@ -13,7 +13,7 @@ var port = flag.Int("port", 4000, "listening port")
 var weight = flag.Int("weight", 1, "weight")
 
 func init() {
-	resolver.AddNameServers(resovlerName, []string{"http://localhost:2379"})
+	resolver.AddNameServers(resovlerName, []string{"192.168.3.45:32350"})
 }
 
 func startService() {

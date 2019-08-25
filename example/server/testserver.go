@@ -18,7 +18,7 @@ type testserver struct {
 
 const (
 	serverDomain = "example.test.com"
-	resovlerName = resolver.ResolverETCD3
+	resovlerName = resolver.ResolverZookeeper
 )
 
 //StartServer start the test server
@@ -31,7 +31,9 @@ func StartServer(address string, extAddress string, weight int32, disable int32)
 		Weight:     weight,
 		Disable:    disable,
 	})
-	return server.Start(&testserver{server: server})
+	tServer := &testserver{server: server}
+	tServer.Register(server.GetgRpcServer())
+	return server.Start(context.Background())
 }
 
 func (s *testserver) Register(grpcs *grpc.Server) {

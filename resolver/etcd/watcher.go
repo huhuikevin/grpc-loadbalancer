@@ -125,9 +125,10 @@ func (w *Watcher) sendData() {
 }
 
 //Start start the wather
-func (w *Watcher) Start(dataChan chan []resolver.ResolvedData) {
+func (w *Watcher) Start(dataChan chan []resolver.ResolvedData) error{
 	w.dataChan = dataChan
 	go w.start(dataChan)
+	return nil
 }
 
 func (w *Watcher) start(dataChan chan []resolver.ResolvedData) {
