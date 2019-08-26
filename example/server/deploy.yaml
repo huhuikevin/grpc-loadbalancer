@@ -29,6 +29,11 @@ spec:
         ports:
         - name: rpcport
           containerPort: 8080
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
       imagePullSecrets:
       - name: sharkgulf
       restartPolicy: Always
