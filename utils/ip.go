@@ -7,11 +7,16 @@ import (
 )
 
 func GetLocalIp() (string, error) {
+	ip := os.Getenv("POD_IP")
+	if ip != "" {
+		fmt.Println("get pod ip = ", ip)
+		return ip, nil
+	}
 	host, err := os.Hostname()
 	if err != nil {
 		return "", err
 	}
-	fmt.Print("get host=", host)
+	fmt.Println("get host=", host)
 
 	ips, err := net.LookupHost(host)
 	if err != nil {
