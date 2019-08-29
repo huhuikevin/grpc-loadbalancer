@@ -29,7 +29,7 @@ func init() {
 }
 
 func NewZkWatcher(serverName string, endpoints []string) (resolver.Watcher, error) {
-	zkConn, chanEvent, err := zk.Connect(endpoints, sessionTimeout)
+	zkConn, chanEvent, err := zk.Connect(endpoints, sessionTimeout, zk.WithHostProvider(&DNSHostProvider{}))
 	if err != nil {
 		return nil, err
 	}

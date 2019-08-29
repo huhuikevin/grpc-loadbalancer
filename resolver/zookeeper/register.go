@@ -36,7 +36,7 @@ func init() {
 
 //NewRegistry register serveice
 func NewRegistry(endpoints []string, ServiceName string, option resolver.Option) (resolver.Register, error) {
-	zkConn, chanEvent, err := zk.Connect(endpoints, sessionTimeout)
+	zkConn, chanEvent, err := zk.Connect(endpoints, sessionTimeout, zk.WithHostProvider(&DNSHostProvider{}))
 	if err != nil {
 		log.Error("zk connect:", err)
 		return nil, err
