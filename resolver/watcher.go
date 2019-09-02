@@ -34,7 +34,6 @@ type Watcher interface {
 	//Close 函数用来关闭观察者
 	Close()
 	Start(dataChan chan []ResolvedData) error
-	GetObseverChan()chan[]string
 }
 
 //WatcherFunc watch function
@@ -42,7 +41,6 @@ type WatcherFunc func(name string, endpoints []string) (Watcher, error)
 
 var (
 	watcherName = make(map[string]WatcherFunc)
-	watcherInsts = make(map[string]Watcher)
 )
 
 //NewWatcher 获取一个观察值
@@ -60,7 +58,6 @@ func NewWatcher(name string, service string, endpoints []string) (Watcher, error
 		if err != nil {
 			return nil, err
 		}
-		watcherInsts[service] = watcher
 		return watcher, nil
 	}
 	return nil, fmt.Errorf("NewWatcher: name %s is not supported", name)
@@ -69,13 +66,4 @@ func NewWatcher(name string, service string, endpoints []string) (Watcher, error
 //AddWatchFunc add watch function for name
 func AddWatchFunc(name string, f WatcherFunc) {
 	watcherName[name] = f
-}
-
-
-func GetWatcher(server string) Watcher{
-	w, ok := watcherInsts[server]
-	if ok {
-		return w
-	}
-	return nil
 }

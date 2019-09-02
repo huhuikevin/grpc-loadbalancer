@@ -62,10 +62,6 @@ func NewEtcd3Watcher(key string, endpoints []string) (resolver.Watcher, error) {
 	return &watcher, nil
 }
 
-func (w *Watcher)GetObseverChan() chan[]string{
-	return nil
-}
-
 func (w *Watcher) delResolvedAddress(addres resolver.ResolvedData) {
 	log.Info("delete ResolvedAddress", addres.Addr)
 	w.lock.Lock()
