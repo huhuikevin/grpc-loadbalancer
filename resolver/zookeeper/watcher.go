@@ -21,6 +21,7 @@ type watcher struct {
 	lock       sync.Mutex
 	close      bool
 	address    map[string]resolver.ResolvedData
+	obsever   chan[]string
 }
 
 func init() {
@@ -43,12 +44,20 @@ func NewZkWatcher(serverName string, endpoints []string) (resolver.Watcher, erro
 		cancel:     cancel,
 		lock:       sync.Mutex{},
 		address:    make(map[string]resolver.ResolvedData),
+		obsever: make(chan[]string, 1),
 	}
 	return &watcher, nil
 }
 
 func (w *watcher) Close() {
 	w.cancel()
+}
+
+func (w *watcher)GetObseverChan() chan[]string{
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	return w.obsever
 }
 
 func (w *watcher) Start(dataChan chan []resolver.ResolvedData) error{
@@ -84,6 +93,7 @@ func (w *watcher) start() {
 	}
 	w.zkClient.Close()
 	close(w.dataChan)
+	close(w.obsever)
 }
 
 //判断地址是否有变化
@@ -118,10 +128,22 @@ func (w *watcher)changeAddress(address[]resolver.ResolvedData) {
 
 func (w *watcher) notifyChanged() {
 	all := make([]resolver.ResolvedData, 0, len(w.address))
-	for _, v := range w.address {
+	addrs := make([]string, 0, len(w.address))
+	for a, v := range w.address {
 		all = append(all, v)
+		addrs = append(addrs, a)
 	}
-	w.dataChan <- all
+	select {
+	case w.dataChan <- all:
+		break
+	case <- w.ctx.Done():
+		return
+	}
+	select {
+	case w.obsever <- addrs:
+		break
+	default:
+	}
 }
 
 func (w *watcher)fetchAddressInfo(childs[]string) {

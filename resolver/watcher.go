@@ -34,12 +34,16 @@ type Watcher interface {
 	//Close 函数用来关闭观察者
 	Close()
 	Start(dataChan chan []ResolvedData) error
+	GetObseverChan()chan[]string
 }
 
 //WatcherFunc watch function
 type WatcherFunc func(name string, endpoints []string) (Watcher, error)
 
-var watcher = make(map[string]WatcherFunc)
+var (
+	watcherName = make(map[string]WatcherFunc)
+	watcherInsts = make(map[string]Watcher)
+)
 
 //NewWatcher 获取一个观察值
 //参数
@@ -48,7 +52,7 @@ var watcher = make(map[string]WatcherFunc)
 //endpoints: 用于域名解析的服务器地址列表
 func NewWatcher(name string, service string, endpoints []string) (Watcher, error) {
 	if name == ResolverETCD3 || name == ResolverZookeeper{
-		fun, ok := watcher[name]
+		fun, ok := watcherName[name]
 		if !ok {
 			return nil, errors.New("can not get Watcher func")
 		}
@@ -56,6 +60,7 @@ func NewWatcher(name string, service string, endpoints []string) (Watcher, error
 		if err != nil {
 			return nil, err
 		}
+		watcherInsts[service] = watcher
 		return watcher, nil
 	}
 	return nil, fmt.Errorf("NewWatcher: name %s is not supported", name)
@@ -63,5 +68,14 @@ func NewWatcher(name string, service string, endpoints []string) (Watcher, error
 
 //AddWatchFunc add watch function for name
 func AddWatchFunc(name string, f WatcherFunc) {
-	watcher[name] = f
+	watcherName[name] = f
+}
+
+
+func GetWatcher(server string) Watcher{
+	w, ok := watcherInsts[server]
+	if ok {
+		return w
+	}
+	return nil
 }
